@@ -3,7 +3,7 @@ from dateutil import parser
 import pandas as pd
 import requests
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid
 
 
 def run():
