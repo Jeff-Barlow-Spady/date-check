@@ -7,10 +7,10 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 
 
 # Set page configuration
-st.set_page_config(page_title="Holiday Scheduler", layout="wide")
+st.set_page_config(page_title="Scheduling Conflict Check", layout="wide")
 
 # Title and Instructions
-st.title("Holiday Scheduler")
+st.title("Date Conflict Checker")
 st.markdown("Upload a file with dates to check for holiday conflicts, or enter dates manually.")
 
 # Function definitions (get_holidays, validate_and_convert_date, create_holiday_df) go here...
