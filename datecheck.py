@@ -12,7 +12,7 @@ st.set_page_config(page_title="Scheduling Conflict Check", layout="wide")
 # Title and Instructions
 st.title("Date Conflict Checker")
 st.markdown("Upload a file with dates to check for holiday conflicts, or enter dates manually.")
-
+st.divider()
 # Function definitions (get_holidays, validate_and_convert_date, create_holiday_df) go here...
 
 # Sidebar for User Inputs
@@ -20,8 +20,8 @@ with st.sidebar:
     st.header("Upload File")
     uploaded_file = st.file_uploader("Choose a file (Excel or CSV)", type=['csv', 'xlsx'])
 
-    st.header("Or Enter Date")
-    date_input = st.text_input("Date (YYYY-MM-DD)")
+    #st.header("Or Enter Date")
+    #date_input = st.text_input("Date (YYYY-MM-DD)")
 
 # Function to call the Abstract API with caching
 @st.cache_data
