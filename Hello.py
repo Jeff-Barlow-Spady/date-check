@@ -15,18 +15,18 @@ def run():
     st.markdown(
         "Upload a file with dates to check for holiday conflicts, or enter dates manually."
     )
-
+    st.divider()
     # Function definitions (get_holidays, validate_and_convert_date, create_holiday_df) go here...
 
     # Sidebar for User Inputs
-    with st.sidebar:
-        st.header("Upload File")
-        uploaded_file = st.file_uploader(
-            "Choose a file (Excel or CSV)", type=["csv", "xlsx"]
-        )
+    #with st.sidebar:
+        #st.header("Upload File")
+        #uploaded_file = st.file_uploader(
+            #"Choose a file (Excel or CSV)", type=["csv", "xlsx"]
+        #)
 
-        st.header("Or Enter Date")
-        date_input = st.text_input("Date (YYYY-MM-DD)")
+        #st.header("Or Enter Date")
+       # date_input = st.text_input("Date (YYYY-MM-DD)")
 
     # Function to call the Abstract API with caching
     @st.cache_data
@@ -65,7 +65,7 @@ def run():
         return pd.DataFrame(holidays_list)
 
     # Upload and process file
-    # uploaded_file = st.file_uploader("Upload your file (Excel or CSV)", type=['csv', 'xlsx'])
+    uploaded_file = st.file_uploader("Upload your file (Excel or CSV)", type=['csv', 'xlsx'])
     if uploaded_file:
         if uploaded_file.type == "text/csv":
             df = pd.read_csv(uploaded_file)
@@ -103,9 +103,9 @@ def run():
             file_name="holidays_matched.csv",
             mime="text/csv",
         )
-
+    st.divider()
     # Manual date input
-    date_input = st.text_input("Or enter a date (YYYY-MM-DD)")
+    date_input = st.text_input("Enter a date (YYYY-MM-DD, Full Text)")
 
     if date_input:
         dates, error = validate_and_convert_date(date_input)
