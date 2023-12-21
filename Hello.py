@@ -1,50 +1,133 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import streamlit as st
-from streamlit.logger import get_logger
-
-LOGGER = get_logger(__name__)
+from dateutil import parser
+import pandas as pd
+import requests
+from datetime import datetime
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 
 def run():
-    st.set_page_config(
-        page_title="Hello",
-        page_icon="👋",
-    )
+    # Set page configuration
+    st.set_page_config(page_title="Scheduling Conflict Check", layout="wide")
 
-    st.write("# Welcome to Streamlit! 👋")
-
-    st.sidebar.success("Select a demo above.")
-
+    # Title and Instructions
+    st.title("Date Conflict Checker")
     st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
+        "Upload a file with dates to check for holiday conflicts, or enter dates manually."
     )
+
+    # Function definitions (get_holidays, validate_and_convert_date, create_holiday_df) go here...
+
+    # Sidebar for User Inputs
+    with st.sidebar:
+        st.header("Upload File")
+        uploaded_file = st.file_uploader(
+            "Choose a file (Excel or CSV)", type=["csv", "xlsx"]
+        )
+
+        st.header("Or Enter Date")
+        date_input = st.text_input("Date (YYYY-MM-DD)")
+
+    # Function to call the Abstract API with caching
+    @st.cache_data
+    def get_holidays(date, country="CA"):
+        API_KEY = st.secrets["API_KEY"]
+        url = f"https://holidays.abstractapi.com/v1/?api_key={API_KEY}&country={country}&year={date.year}&month={date.month}&day={date.day}"
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return []
+
+    # Function to validate and convert various date formats
+    def validate_and_convert_date(date_str):
+        dates = date_str.split(",")
+        converted_dates = []
+        errors = []
+        for date in dates:
+            try:
+                converted_dates.append(parser.parse(date.strip()).strftime("%Y-%m-%d"))
+            except ValueError:
+                errors.append(f"Invalid date format: {date.strip()}")
+        return converted_dates, errors
+
+    # Function to create a DataFrame from holiday data
+    def create_holiday_df(holidays_data):
+        holidays_list = []
+        for holiday in holidays_data:
+            holidays_list.append(
+                {
+                    "name": holiday.get("name", "No Name"),
+                    "location": holiday.get("location", "No Location"),
+                    "date": holiday.get("date", "No Date"),
+                }
+            )
+        return pd.DataFrame(holidays_list)
+
+    # Upload and process file
+    # uploaded_file = st.file_uploader("Upload your file (Excel or CSV)", type=['csv', 'xlsx'])
+    if uploaded_file:
+        if uploaded_file.type == "text/csv":
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+
+        df["Date"] = df["Date"].apply(lambda x: validate_and_convert_date(x)[0])
+        df["Holidays"] = df["Date"].apply(
+            lambda x: get_holidays(datetime.strptime(x, "%Y-%m-%d"))
+        )
+        df = df.explode("Holidays")
+        df = df.join(
+            df["Holidays"].apply(lambda x: create_holiday_df(x)).reset_index(drop=True)
+        )
+        df.drop(columns=["Holidays"], inplace=True)
+
+        # AgGrid for displaying the dataframe
+        gb = GridOptionsBuilder.from_dataframe(df)
+        gb.configure_pagination(paginationAutoPageSize=True)
+        gb.configure_side_bar()
+        gb.configure_default_column(
+            groupable=True,
+            value=True,
+            enableRowGroup=True,
+            aggFunc="sum",
+            editable=True,
+        )
+        grid_options = gb.build()
+        AgGrid(df, gridOptions=grid_options, enable_enterprise_modules=True)
+
+        # Download button
+        st.download_button(
+            label="Download Results",
+            data=df.to_csv(index=False),
+            file_name="holidays_matched.csv",
+            mime="text/csv",
+        )
+
+    # Manual date input
+    date_input = st.text_input("Or enter a date (YYYY-MM-DD)")
+
+    if date_input:
+        dates, error = validate_and_convert_date(date_input)
+        if error:
+            st.error(error)
+        else:
+            holidays = []
+            for date in dates:
+                holiday_data = get_holidays(datetime.strptime(date, "%Y-%m-%d"))
+                if holiday_data:
+                    holidays.extend(holiday_data)
+                else:
+                    holidays.append(
+                        {
+                            "name": "No conflict, schedule away",
+                            "location": "",
+                            "date": date,
+                        }
+                    )
+
+            holidays_df = create_holiday_df(holidays)
+            AgGrid(holidays_df)
 
 
 if __name__ == "__main__":
